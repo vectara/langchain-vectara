@@ -3,5 +3,6 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .mypy_cache_test
-.env
+libs/vectara/tests/integration_tests/.env
 .venv*
+.idea/
