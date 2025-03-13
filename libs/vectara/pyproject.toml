@@ -16,6 +16,8 @@ description = "An integration package connecting Vectara and LangChain"
 readme = "README.md"
 
 [project.urls]
+"Source Code" = "https://github.com/vectara/langchain-vectara/tree/main/libs/vectara"
+"Release Notes" = "https://github.com/vectara/langchain-vectara/releases"
 repository = "https://github.com/vectara/langchain-vectara"
 
 [dependency-groups]
