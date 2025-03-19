@@ -33,7 +33,7 @@ from langchain_vectara.vectorstores import (
 # 1. Create a Vectara account: sign up at https://www.vectara.com/integrations/langchain
 # 2. Create a corpus in your Vectara account
 # 3. Create an API_KEY for this corpus with permissions for query and indexing
-# 4. Create year, director, rating and genre filters at document level
+# 4. Create year, director, rating and genre metadata filters at document level
 # 4. Setup environment variables:
 #    VECTARA_API_KEY and VECTARA_CORPUS_key
 #

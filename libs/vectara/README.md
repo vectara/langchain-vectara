@@ -233,5 +233,32 @@ results = vectara.similarity_search("what is LangChain?")
 ```
 
 ## Intelligent Query Rewriting
+Intelligent Query Rewriting enhances search precision by automatically generating metadata filter expressions from natural language queries. This capability analyzes user queries, extracts relevant metadata filters, and rephrases the query to focus on the core information need.
+Enable intelligent query rewriting on a per-query basis by setting the `intelligent_query_rewriting` parameter to `true` in `VectaraQueryConfig`.
 
+### Example Usage
+Consider a corpus containing movie data with the metadata filter attribute `doc.production_country` (Text).
 
+Example user query: What are some of the highest grossing movies made in US, UK, or India?
+
+#### Intelligent Query Rewriting processes this by:
+
+  - Extracting metadata filters: doc.production_country IN ('United States of America', 'United Kingdom', 'India')
+  - Rephrasing the query to remove filter context: What are some of the highest grossing movies?
+
+```python
+from langchain_vectara.vectorstores import (
+    VectaraQueryConfig,
+    SearchConfig,
+    CorpusConfig,
+)
+
+search_config = SearchConfig(
+    corpora=[CorpusConfig(corpus_key="your-corpus-key")],
+)
+
+config = VectaraQueryConfig(
+    search=search_config,
+    intelligent_query_rewriting=True
+)
+```
