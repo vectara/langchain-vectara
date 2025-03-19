@@ -68,7 +68,7 @@ When using this method, each file is uploaded directly to the Vectara backend, p
 
 As an example:
 
-You can specifies whether to extract table data from the uploaded file. If you do not set this option, the platform does not extract tables from PDF files.
+You can specify whether to extract table data from any uploaded PDF file. If you do not set this option, the platform does not extract tables from PDF.
 
 ```python
 from langchain_vectara.vectorstores import File, TableExtractionConfig
@@ -159,8 +159,7 @@ The `as_rag` method returns a `VectaraRAG` object, which behaves just like any L
 ### Hallucination Detection score
 
 Vectara created [HHEM](https://huggingface.co/vectara/hallucination_evaluation_model) - an open source model that can be used to evaluate RAG responses for factual consistency. 
-As part of the Vectara RAG, the "Factual Consistency Score" (or FCS), This calibrated score can range from 0.0 to 1.0. A higher score indicates a higher confidence that the summary is factually consistent, while a lower score indicates possible hallucinations.
-This is automatically included in the output of the RAG pipeline. 
+As part of Vectara's RAG pipeline, the "Factual Consistency Score" (or FCS) is automatically returned with every query. This calibrated score can range from 0.0 to 1.0. A higher score indicates a higher confidence that the summary is factually consistent, while a lower score indicates possible hallucinations.
 
 ```python
 rag = vectara.as_rag(config)
@@ -241,7 +240,7 @@ Consider a corpus containing movie data with the metadata filter attribute `doc.
 
 Example user query: What are some of the highest grossing movies made in US, UK, or India?
 
-#### Intelligent Query Rewriting processes this by:
+#### Intelligent Query Rewriting processes this by
 
   - Extracting metadata filters: doc.production_country IN ('United States of America', 'United Kingdom', 'India')
   - Rephrasing the query to remove filter context: What are some of the highest grossing movies?
