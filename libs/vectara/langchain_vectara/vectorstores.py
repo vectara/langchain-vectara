@@ -122,6 +122,7 @@ class CorpusConfig(BaseModel):
     """
 
     corpus_key: Optional[str] = None
+    query: Optional[str] = None
     custom_dimensions: Optional[dict[str, float]] = None
     metadata_filter: Optional[str] = None
     lexical_interpolation: Optional[float] = 0.0
@@ -424,6 +425,7 @@ class VectaraQueryConfig(BaseModel):
     generation: Union[GenerationConfig, None] = Field(default_factory=GenerationConfig)
     stream_response: bool = False
     save_history: bool = False
+    intelligent_query_rewriting: bool = False
     chat: bool = Field(default=False)
     chat_conv_id: Optional[str] = None
 
@@ -831,6 +833,7 @@ class Vectara(VectorStore):
             "generation": generation_config,
             "stream_response": config.stream_response,
             "save_history": config.save_history,
+            "intelligent_query_rewriting": config.intelligent_query_rewriting,
         }
         if config.chat:
             body["chat"] = {"store": True}

@@ -33,6 +33,7 @@ from langchain_vectara.vectorstores import (
 # 1. Create a Vectara account: sign up at https://www.vectara.com/integrations/langchain
 # 2. Create a corpus in your Vectara account
 # 3. Create an API_KEY for this corpus with permissions for query and indexing
+# 4. Create year, director, rating and genre filters at document level
 # 4. Setup environment variables:
 #    VECTARA_API_KEY and VECTARA_CORPUS_key
 #
@@ -772,3 +773,64 @@ def test_get_by_ids(vectara: Vectara, corpus_key: str) -> None:
         assert doc.metadata.pop("source") == "langchain"
         assert doc.metadata.get("test") == metadatas[idx]["test"]
         assert doc.metadata.get("custom") == metadatas[idx]["custom"]
+
+
+def test_intelligent_query_rewriting(vectara: Vectara, corpus_key: str) -> None:
+    docs = [
+        Document(
+            page_content="A bunch of scientists bring back dinosaurs and mayhem "
+            "breaks loose",
+            metadata={"year": 1993, "rating": 7.7, "genre": "science fiction"},
+        ),
+        Document(
+            page_content="Leo DiCaprio gets lost in a dream within a dream within a "
+            "dream within a ...",
+            metadata={"year": 2010, "director": "Christopher Nolan", "rating": 8.2},
+        ),
+        Document(
+            page_content="A psychologist / detective gets lost in a series of dreams "
+            "within dreams within dreams and Inception reused the idea",
+            metadata={"year": 2006, "director": "Satoshi Kon", "rating": 8.6},
+        ),
+        Document(
+            page_content="A bunch of normal-sized women are supremely wholesome and "
+            "some men pine after them",
+            metadata={"year": 2019, "director": "Greta Gerwig", "rating": 8.3},
+        ),
+        Document(
+            page_content="Toys come alive and have a blast doing so",
+            metadata={"year": 1995, "genre": "animated"},
+        ),
+        Document(
+            page_content="Three men walk into the Zone, three men walk out of the Zone",
+            metadata={
+                "year": 1979,
+                "rating": 9.9,
+                "director": "Andrei Tarkovsky",
+                "genre": "science fiction",
+            },
+        ),
+    ]
+
+    for doc in docs:
+        vectara.add_texts(
+            [doc.page_content], corpus_key=corpus_key, doc_metadata=doc.metadata
+        )
+
+    config = VectaraQueryConfig(
+        search=SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)]),
+        generation=None,
+        intelligent_query_rewriting=True,
+    )
+
+    results = list(
+        vectara.vectara_query("I want to watch a movie ratedhigher than 8.5", config)
+    )
+
+    assert len(results) == 2
+
+    results = list(
+        vectara.vectara_query("Has Greta Gerwig directed any moviesabout women", config)
+    )
+
+    assert len(results) == 1
