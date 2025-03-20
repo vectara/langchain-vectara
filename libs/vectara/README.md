@@ -4,10 +4,6 @@ This package contains the LangChain integration with Vectara.
 
 # Vectara
 
->[Vectara](https://vectara.com/) provides a Trusted Generative AI platform, allowing organizations to rapidly create a ChatGPT-like experience (an AI assistant) 
-> which is grounded in the data, documents, and knowledge that they have (technically, it is Retrieval-Augmented-Generation-as-a-service).
-
-**Vectara Overview:**
 [Vectara](https://vectara.com/) is the trusted AI Assistant and Agent platform which focuses on enterprise readiness for mission-critical applications.
 Vectara serverless RAG-as-a-service provides all the components of RAG behind an easy-to-use API, including:
 1. A way to extract text from files (PDF, PPT, DOCX, etc)
@@ -60,8 +56,8 @@ After you have the vectorstore, you can use `add_texts` or `add_documents` as pe
 
 ```python
 doc_ids = vectara.add_texts(
-    texts=["to be or not to be", "that is the question"],
-    metadatas=[{"title": "test"}, {"title": "test"}],
+    texts=["A bunch of scientists bring back dinosaurs and mayhem breaks loose", "Leo DiCaprio gets lost in a dream within a dream within a dream within a ..."],
+    metadatas=[{"year": 1993, "rating": 7.7, "genre": "science fiction"}, {"year": 2010, "director": "Christopher Nolan", "rating": 8.2}],
     corpus_key="your-corpus-key",
 )
 
@@ -72,55 +68,25 @@ When using this method, each file is uploaded directly to the Vectara backend, p
 
 As an example:
 
+You can specify whether to extract table data from any uploaded PDF file. If you do not set this option, the platform does not extract tables from PDF.
+
 ```python
-from langchain_vectara.vectorstores import File
+from langchain_vectara.vectorstores import File, TableExtractionConfig
 
 file_objects = [
-    File(file_path="path/to/file1.pdf", metadata={"doc_type": "pdf"}),
+    File(file_path="path/to/file1.pdf", metadata={"doc_type": "pdf"}, table_extraction_config=TableExtractionConfig(extract_tables=True)),
     File(file_path="path/to/file2.docx", metadata={"doc_type": "word"}),
 ]
 
 doc_ids = vectara.add_files(file_objects, corpus_key="your-corpus-key")
 ```
 
-Of course you do not have to add any data, and instead just connect to an existing Vectara corpus where data may already be indexed.
-
-### Querying the VectorStore
-
-To query the Vectara vectorstore, you can use the `similarity_search` method (or `similarity_search_with_score`), which takes a query string and returns a list of results:
-```python
-from langchain_vectara.vectorstores import (
-    SearchConfig,
-    CorpusConfig
-    )
-
-results_with_score = vectara.similarity_search_with_score(
-    "what is LangChain?",
-    search=SearchConfig(
-        corpora=[CorpusConfig(corpus_key="your-corpus-key")])
-)
-```
-The results are returned as a list of relevant documents, and a relevance score of each document.
-
-In this case, we used the default retrieval parameters, but you can also specify the following additional arguments in the `SearchConfig` and `CorpusConfig`:
-- `limit`: number of results to return (defaults to 10)
-- `lexical_interpolation`: the [lexical matching](https://docs.vectara.com/docs/api-reference/search-apis/lexical-matching) factor for hybrid search (defaults to 0.0)
-- `filter`: a [metadata filter](https://docs.vectara.com/docs/common-use-cases/filtering-by-metadata/filter-overview) to apply to the results (default None)
-- `context_configuration`: [Context configuration](https://docs.vectara.com/docs/api-reference/search-apis/interpreting-responses/highlighting) settings for search results.
-- `reranker`: Reranker to refine search results. Vectara has multiple [reranker](https://docs.vectara.com/docs/api-reference/search-apis/reranking)
-   - Multilingual Reranker v1/CustomerSpecific
-   - Maximal Marginal Relevance (MMR) reranker
-   - User Defined Function reranker
-   - Chain reranker
-
-To get results without the relevance score, you can simply use the 'similarity_search' method:
-```python   
-results = vectara.similarity_search("what is LangChain?")
-```
-
 ## Vectara for Retrieval Augmented Generation (RAG)
 
-Vectara provides a full RAG pipeline, including generative summarization. To use it as a complete RAG solution, you can use the `as_rag` method.
+Vectara is an end-to-end Generative AI platform that implements a complete RAG stack, including text extraction, chunking, embedding, vector store, retrieval, and response generation using an LLM.
+There is no RAG-stack abstraction in LangChain, therefore the Vectara integration is provided via the  vectorstore class.
+
+To use it as a complete RAG solution, you can use the `as_rag` method.
 Following are the parameters that can be specified in the [`VectaraQueryConfig`](https://docs.vectara.com/docs/rest-api/query) object to control retrieval and summarization:
 * search: Config for search results to return
     - corpora:  List of corpora to search within. Vectara supports searching within a single corpus or multiple corpora.
@@ -189,6 +155,20 @@ for chunk in rag.stream("what did he said about the covid?"):
 
 The `as_rag` method returns a `VectaraRAG` object, which behaves just like any LangChain Runnable, including the `invoke` or `stream` methods.
 
+
+### Hallucination Detection score
+
+Vectara created [HHEM](https://huggingface.co/vectara/hallucination_evaluation_model) - an open source model that can be used to evaluate RAG responses for factual consistency. 
+As part of Vectara's RAG pipeline, the "Factual Consistency Score" (or FCS) is automatically returned with every query. This calibrated score can range from 0.0 to 1.0. A higher score indicates a higher confidence that the summary is factually consistent, while a lower score indicates possible hallucinations.
+
+```python
+rag = vectara.as_rag(config)
+resp = rag.invoke(query_str)
+print(resp['answer'])
+print(f"Vectara FCS = {resp['fcs']}")
+```
+
+
 ## Vectara Chat
 
 The RAG functionality can be used to create a chatbot with multi-turn question/response turns in a conversation. In this case, the full chat history is also maintained and used as needed by the Vectara platform.
@@ -216,15 +196,69 @@ Like with as_rag, you provide a `VectaraQueryConfig` object to control the retri
 If no summary is requested, the response will be a list of relevant documents, each with a relevance score.
 If a summary is requested, the response will be a list of relevant documents as before, plus an additional document that includes the generative summary.
 
-## Hallucination Detection score
+Of course you do not have to add any data, and instead just connect to an existing Vectara corpus where data may already be indexed.
 
-Vectara created [HHEM](https://huggingface.co/vectara/hallucination_evaluation_model) - an open source model that can be used to evaluate RAG responses for factual consistency. 
-As part of the Vectara RAG, the "Factual Consistency Score" (or FCS), which is an improved version of the open source HHEM is made available via the API. 
-This is automatically included in the output of the RAG pipeline
+### Querying the VectorStore
+
+For the semantic search query the Vectara vectorstore using `similarity_search` method (or `similarity_search_with_score`), which takes a query string and returns a list of results:
+```python
+from langchain_vectara.vectorstores import (
+    SearchConfig,
+    CorpusConfig
+    )
+
+results_with_score = vectara.similarity_search_with_score(
+    "what is LangChain?",
+    search=SearchConfig(
+        corpora=[CorpusConfig(corpus_key="your-corpus-key")])
+)
+```
+The results are returned as a list of relevant documents, and a relevance score of each document.
+
+In this case, we used the default retrieval parameters, but you can also specify the following additional arguments in the `SearchConfig` and `CorpusConfig`:
+- `limit`: number of results to return (defaults to 10)
+- `lexical_interpolation`: the [lexical matching](https://docs.vectara.com/docs/api-reference/search-apis/lexical-matching) factor for hybrid search (defaults to 0.0)
+- `filter`: a [metadata filter](https://docs.vectara.com/docs/common-use-cases/filtering-by-metadata/filter-overview) to apply to the results (default None)
+- `context_configuration`: [Context configuration](https://docs.vectara.com/docs/api-reference/search-apis/interpreting-responses/highlighting) settings for search results.
+- `reranker`: Reranker to refine search results. Vectara has multiple [reranker](https://docs.vectara.com/docs/api-reference/search-apis/reranking)
+   - Multilingual Reranker v1/CustomerSpecific
+   - Maximal Marginal Relevance (MMR) reranker
+   - User Defined Function reranker
+   - Chain reranker
+
+To get results without the relevance score, you can simply use the 'similarity_search' method:
+```python   
+results = vectara.similarity_search("what is LangChain?")
+```
+
+## Intelligent Query Rewriting
+Intelligent Query Rewriting enhances search precision by automatically generating metadata filter expressions from natural language queries. This capability analyzes user queries, extracts relevant metadata filters, and rephrases the query to focus on the core information need. For more [details](https://docs.vectara.com/docs/search-and-retrieval/intelligent-query-rewriting).
+
+Enable intelligent query rewriting on a per-query basis by setting the `intelligent_query_rewriting` parameter to `true` in `VectaraQueryConfig`.
+
+### Example Usage
+Consider a corpus containing movie data with the metadata filter attribute `doc.production_country` (Text).
+
+Example user query: What are some of the highest grossing movies made in US, UK, or India?
+
+#### Intelligent Query Rewriting processes this by
+
+  - Extracting metadata filters: doc.production_country IN ('United States of America', 'United Kingdom', 'India')
+  - Rephrasing the query to remove filter context: What are some of the highest grossing movies?
 
 ```python
-rag = vectara.as_rag(config)
-resp = rag.invoke(query_str)
-print(resp['answer'])
-print(f"Vectara FCS = {resp['fcs']}")
+from langchain_vectara.vectorstores import (
+    VectaraQueryConfig,
+    SearchConfig,
+    CorpusConfig,
+)
+
+search_config = SearchConfig(
+    corpora=[CorpusConfig(corpus_key="your-corpus-key")],
+)
+
+config = VectaraQueryConfig(
+    search=search_config,
+    intelligent_query_rewriting=True
+)
 ```
