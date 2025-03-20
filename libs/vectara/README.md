@@ -232,7 +232,8 @@ results = vectara.similarity_search("what is LangChain?")
 ```
 
 ## Intelligent Query Rewriting
-Intelligent Query Rewriting enhances search precision by automatically generating metadata filter expressions from natural language queries. This capability analyzes user queries, extracts relevant metadata filters, and rephrases the query to focus on the core information need.
+Intelligent Query Rewriting enhances search precision by automatically generating metadata filter expressions from natural language queries. This capability analyzes user queries, extracts relevant metadata filters, and rephrases the query to focus on the core information need. For more [details](https://docs.vectara.com/docs/search-and-retrieval/intelligent-query-rewriting).
+
 Enable intelligent query rewriting on a per-query basis by setting the `intelligent_query_rewriting` parameter to `true` in `VectaraQueryConfig`.
 
 ### Example Usage
