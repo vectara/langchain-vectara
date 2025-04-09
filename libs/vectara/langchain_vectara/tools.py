@@ -10,8 +10,10 @@ from pydantic import BaseModel, Field
 
 from langchain_vectara.vectorstores import (
     CorpusConfig,
+    File,
     GenerationConfig,
     SearchConfig,
+    Vectara,
     VectaraQueryConfig,
 )
 
@@ -99,9 +101,12 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
         "Useful for retrieving specific information from your documents based on "
         "meaning and context. "
     )
+    vectorstore: Vectara
 
     # Default corpus_key if not provided in the config
     corpus_key: Optional[str] = None
+
+    model_config = {"arbitrary_types_allowed": True}
 
     @staticmethod
     def get_description(name: str, description: str) -> str:
@@ -172,13 +177,13 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
             return f"Error searching Vectara: {str(e)}"
 
 
-class VectaraGeneration(BaseVectorStoreTool, BaseTool):
+class VectaraRAG(BaseVectorStoreTool, BaseTool):
     """Tool for generating summaries from the Vectara platform.
 
     Example:
         .. code-block:: python
 
-            from langchain_community.tools import VectaraGeneration
+            from langchain_community.tools import VectaraRAG
             from langchain_vectara import Vectara  # Import from langchain-vectara
             from langchain_vectara import (
                 VectaraQueryConfig,
@@ -193,8 +198,8 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
             )
 
             # Create the tool
-            tool = VectaraGeneration(
-                name="vectara_generation",
+            tool = VectaraRAG(
+                name="vectara_rag",
                 description="Generate summaries from your Vectara corpus",
                 vectorstore=vectara,
                 corpus_key="your-corpus-id"  # Optional, can be provided in config
@@ -230,16 +235,18 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
             })
     """
 
-    name: str = "vectara_generation"
+    name: str = "vectara_rag"
     description: str = (
         "Generate AI responses from your Vectara corpus using semantic search. "
         "This tool understands the meaning of your query and generates a concise "
-        "summary "
-        "from the most relevant results. "
+        "summary from the most relevant results. "
     )
+    vectorstore: Vectara
 
     # Default corpus_key if not provided in the config
     corpus_key: Optional[str] = None
+
+    model_config = {"arbitrary_types_allowed": True}
 
     @staticmethod
     def get_description(name: str, description: str) -> str:
@@ -347,18 +354,21 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
     name: str = "vectara_ingest"
     description: str = (
         "Ingest documents into your Vectara corpus for semantic search. "
-        "Useful for adding new information to your knowledge base that can be queried "
-        "using natural language. "
+        "Useful for adding new information to your knowledge base that can be "
+        "queried using natural language. "
         "Documents will be processed to understand their meaning and context. "
         "Input should be a list of texts to ingest."
     )
     args_schema: Type[BaseModel] = VectaraIngestInput
+    vectorstore: Vectara
 
     # Required corpus_key for ingestion
     corpus_key: str = Field(
         ...,  # This makes it required
         description="Corpus key where documents will be ingested",
     )
+
+    model_config = {"arbitrary_types_allowed": True}
 
     @staticmethod
     def get_description(name: str, description: str) -> str:
@@ -431,3 +441,135 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
             )
         except Exception as e:
             return f"Error ingesting documents to Vectara: {str(e)}"
+
+
+class VectaraAddFilesInput(BaseModel):
+    """Input for the Vectara add files tool."""
+
+    files: List[File] = Field(description="List of File objects to upload to Vectara")
+    corpus_key: Optional[str] = Field(
+        default=None, description="Corpus key where files will be uploaded"
+    )
+
+    model_config = {"arbitrary_types_allowed": True}
+
+
+class VectaraAddFiles(BaseVectorStoreTool, BaseTool):
+    """Tool for uploading files to the Vectara platform.
+
+    Example:
+        .. code-block:: python
+
+            from langchain_vectara.tools import VectaraAddFiles
+            from langchain_vectara.vectorstores import File, TableExtractionConfig,
+            ChunkingStrategy
+            from langchain_vectara import Vectara  # Import from langchain-vectara
+
+            # Initialize the Vectara vectorstore
+            vectara = Vectara(
+                vectara_api_key="your-api-key"
+            )
+
+            # Create the tool
+            tool = VectaraAddFiles(
+                name="vectara_add_files",
+                description="Upload files to the Vectara corpus",
+                vectorstore=vectara,
+                corpus_key="your-corpus-key"  # Required for file upload
+            )
+
+            # Prepare file objects
+            file1 = File(
+                file_path="/path/to/file1.pdf",
+                metadata={"source": "file1"},
+                table_extraction_config=TableExtractionConfig(extract_tables=True),
+                chunking_strategy=ChunkingStrategy(max_chars_per_chunk=1000)
+            )
+            file2 = File(
+                file_path="/path/to/file2.docx",
+                metadata={"source": "file2"}
+            )
+
+            # Use the tool
+            result = tool.run({
+                "files": [file1, file2]
+            })
+    """
+
+    name: str = "vectara_add_files"
+    description: str = (
+        "Upload files to your Vectara corpus for semantic search. "
+        "Supports various file formats including PDFs, DOC, DOCX, TXT, HTML, and more. "
+        "Files will be processed automatically with text and metadata extraction. "
+        "Input should be a list of File objects with file_path and optional metadata, "
+        "chunking_strategy, and table_extraction_config."
+    )
+    args_schema: Type[BaseModel] = VectaraAddFilesInput
+    vectorstore: Vectara
+
+    # Required corpus_key for file upload
+    corpus_key: str = Field(
+        ...,  # This makes it required
+        description="Corpus key where files will be uploaded",
+    )
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    @staticmethod
+    def get_description(name: str, description: str) -> str:
+        """Get the description for the tool.
+
+        Args:
+            name: The name of the Vectara corpus or knowledge base
+            description: Additional description of the knowledge base
+
+        Returns:
+            A formatted description for the tool
+        """
+        template: str = (
+            "Useful for when you need to upload files to {name} for "
+            "semantic search. "
+            "Supports PDFs, DOC, DOCX, TXT, HTML and more. "
+            "Documents are automatically processed with text extraction and chunking. "
+            "Whenever you need to add files about {description} "
+            "you should use this. "
+            "Input should be File objects with file paths and optional settings."
+        )
+        return template.format(name=name, description=description)
+
+    def _run(
+        self,
+        files: List[File],
+        corpus_key: Optional[str] = None,
+        run_manager: Optional[CallbackManagerForToolRun] = None,
+    ) -> str:
+        """Run the Vectara add files.
+
+        Args:
+            files: List of File objects to upload
+            corpus_key: Optional corpus key override
+            run_manager: Optional callback manager
+
+        Returns:
+            String describing the upload result
+        """
+        try:
+            active_corpus_key = corpus_key or self.corpus_key
+
+            if not active_corpus_key:
+                return "Error: corpus_key is required for file upload"
+
+            doc_ids = self.vectorstore.add_files(
+                files_list=files,
+                corpus_key=active_corpus_key,
+            )
+
+            if not doc_ids:
+                return "No files were successfully uploaded."
+
+            return (
+                f"Successfully uploaded {len(doc_ids)} files to Vectara "
+                f"corpus {active_corpus_key} with IDs: {', '.join(doc_ids)}"
+            )
+        except Exception as e:
+            return f"Error uploading files to Vectara: {str(e)}"
