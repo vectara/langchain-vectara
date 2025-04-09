@@ -1,13 +1,12 @@
 """Unit tests for Vectara tools."""
 
 import json
-import os
 import unittest
-from unittest import mock
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Type
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain_core.tools import BaseTool
+from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
 from langchain_tests.unit_tests.tools import ToolsUnitTests
 
@@ -23,9 +22,12 @@ from langchain_vectara.vectorstores import (
     VectaraQueryConfig,
 )
 
+# Type alias for the return type of init_from_env_params
+EnvParamsType = Tuple[Dict[str, str], Dict[str, Any], Dict[str, str]]
+
 
 @pytest.fixture(autouse=True)
-def mock_openai():
+def mock_openai() -> Generator[None, None, None]:
     """Create a pytest fixture to mock OpenAI dependencies."""
     with patch("langchain_community.tools.vectorstore.tool.OpenAI") as mock_openai:
         mock_llm = MagicMock()
@@ -37,31 +39,48 @@ def mock_openai():
 class MockVectara(VectorStore):
     """Mock Vectara class for testing."""
 
-    def add_texts(self, *args, **kwargs):
+    def add_texts(
+        self,
+        texts: Iterable[str],
+        metadatas: Optional[List[Dict[Any, Any]]] = None,
+        *,
+        ids: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> List[str]:  # type: ignore
         """Mock implementation."""
         return ["doc1", "doc2"]
 
-    def similarity_search(self, *args, **kwargs):
+    def similarity_search(
+        self, query: str, k: int = 4, **kwargs: Any
+    ) -> List[Document]:
         """Mock implementation of the required abstract method."""
         return [MagicMock(page_content="Test content", metadata={"source": "test"})]
 
-    def similarity_search_with_score(self, *args, **kwargs):
+    def similarity_search_with_score(
+        self, query: str, **kwargs: Any
+    ) -> List[Tuple[Document, float]]:
         """Mock implementation."""
         return [
             (MagicMock(page_content="Test content", metadata={"source": "test"}), 0.85)
         ]
 
-    def as_rag(self, *args, **kwargs):
+    def as_rag(self, config: Any, **kwargs: Any) -> Any:
         """Mock implementation."""
         mock_rag = MagicMock()
-        mock_rag.invoke.return_value = {
+        mock_rag.invoke.return_value = {  # type: ignore[attr-defined]
             "answer": "Test answer",
             "fcs": 0.95,
         }
         return mock_rag
 
     @classmethod
-    def from_texts(cls, *args, **kwargs):
+    def from_texts(
+        cls,
+        texts: List[str],
+        embedding: Any,
+        metadatas: Optional[List[Dict]] = None,
+        **kwargs: Any,
+    ) -> "MockVectara":
         """Mock implementation."""
         return cls()
 
@@ -70,12 +89,12 @@ class TestVectaraSearchToolUnit(ToolsUnitTests):
     """Test VectaraSearch tool with LangChain standard unit tests."""
 
     @property
-    def tool_constructor(self):
+    def tool_constructor(self) -> Type[VectaraSearch]:
         """Return the constructor for VectaraSearch."""
         return VectaraSearch
 
     @property
-    def tool_constructor_params(self):
+    def tool_constructor_params(self) -> Dict[str, Any]:
         """Return parameters for initializing VectaraSearch."""
         mock_vectorstore = MockVectara()
         return {
@@ -86,17 +105,17 @@ class TestVectaraSearchToolUnit(ToolsUnitTests):
         }
 
     @property
-    def tool_invoke_params(self):
+    def tool_invoke_params(self) -> Dict[str, str]:
         """Return example parameters for invoking VectaraSearch."""
         return {"query": "test query"}
 
     @property
-    def tool_invoke_params_example(self):
+    def tool_invoke_params_example(self) -> Dict[str, str]:
         """Return example parameters for invoking VectaraSearch."""
         return self.tool_invoke_params
 
     @property
-    def init_from_env_params(self):
+    def init_from_env_params(self) -> EnvParamsType:
         """Return parameters for testing initialization from environment variables."""
         mock_vectorstore = MockVectara()
 
@@ -121,12 +140,12 @@ class TestVectaraGenerationToolUnit(ToolsUnitTests):
     """Test VectaraGeneration tool with LangChain standard unit tests."""
 
     @property
-    def tool_constructor(self):
+    def tool_constructor(self) -> Type[VectaraGeneration]:
         """Return the constructor for VectaraGeneration."""
         return VectaraGeneration
 
     @property
-    def tool_constructor_params(self):
+    def tool_constructor_params(self) -> Dict[str, Any]:
         """Return parameters for initializing VectaraGeneration."""
         mock_vectorstore = MockVectara()
         return {
@@ -137,17 +156,17 @@ class TestVectaraGenerationToolUnit(ToolsUnitTests):
         }
 
     @property
-    def tool_invoke_params(self):
+    def tool_invoke_params(self) -> Dict[str, str]:
         """Return example parameters for invoking VectaraGeneration."""
         return {"query": "test query"}
 
     @property
-    def tool_invoke_params_example(self):
+    def tool_invoke_params_example(self) -> Dict[str, str]:
         """Return example parameters for invoking VectaraGeneration."""
         return self.tool_invoke_params
 
     @property
-    def init_from_env_params(self):
+    def init_from_env_params(self) -> EnvParamsType:
         """Return parameters for testing initialization from environment variables."""
         mock_vectorstore = MockVectara()
 
@@ -172,12 +191,12 @@ class TestVectaraIngestToolUnit(ToolsUnitTests):
     """Test VectaraIngest tool with LangChain standard unit tests."""
 
     @property
-    def tool_constructor(self):
+    def tool_constructor(self) -> Type[VectaraIngest]:
         """Return the constructor for VectaraIngest."""
         return VectaraIngest
 
     @property
-    def tool_constructor_params(self):
+    def tool_constructor_params(self) -> Dict[str, Any]:
         """Return parameters for initializing VectaraIngest."""
         mock_vectorstore = MockVectara()
         return {
@@ -188,7 +207,7 @@ class TestVectaraIngestToolUnit(ToolsUnitTests):
         }
 
     @property
-    def tool_invoke_params(self):
+    def tool_invoke_params(self) -> Dict[str, Any]:
         """Return example parameters for invoking VectaraIngest."""
         return {
             "documents": ["Document 1", "Document 2"],
@@ -196,12 +215,12 @@ class TestVectaraIngestToolUnit(ToolsUnitTests):
         }
 
     @property
-    def tool_invoke_params_example(self):
+    def tool_invoke_params_example(self) -> Dict[str, Any]:
         """Return example parameters for invoking VectaraIngest."""
         return self.tool_invoke_params
 
     @property
-    def init_from_env_params(self):
+    def init_from_env_params(self) -> EnvParamsType:
         """Return parameters for testing initialization from environment variables."""
         mock_vectorstore = MockVectara()
 
@@ -232,7 +251,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore = MockVectara()
         mock_vectara.return_value = mock_vectorstore
 
-        mock_vectorstore.similarity_search_with_score = MagicMock(
+        mock_vectorstore.similarity_search_with_score = MagicMock(  # type: ignore[method-assign]
             return_value=[
                 (
                     MagicMock(page_content="Test content", metadata={"source": "test"}),
@@ -284,7 +303,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore = MockVectara()
         mock_vectara.return_value = mock_vectorstore
 
-        mock_vectorstore.similarity_search_with_score = MagicMock(
+        mock_vectorstore.similarity_search_with_score = MagicMock(  # type: ignore[method-assign]
             return_value=[
                 (
                     MagicMock(page_content="Test content", metadata={"source": "test"}),
@@ -327,7 +346,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         mock_rag = MagicMock()
-        mock_rag.invoke.return_value = {
+        mock_rag.invoke.return_value = {  # type: ignore[attr-defined]
             "answer": "Summary text",
             "fcs": 0.95,
             "context": [
@@ -339,7 +358,7 @@ class TestVectaraTools(unittest.TestCase):
                 )
             ],
         }
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -388,7 +407,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         mock_rag = MagicMock()
-        mock_rag.invoke.return_value = {
+        mock_rag.invoke.return_value = {  # type: ignore[attr-defined]
             "answer": "Summary text",
             "fcs": 0.95,
             "context": [
@@ -400,7 +419,7 @@ class TestVectaraTools(unittest.TestCase):
                 )
             ],
         }
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -439,7 +458,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         mock_rag = MagicMock()
-        mock_rag.invoke.return_value = {
+        mock_rag.invoke.return_value = {  # type: ignore[attr-defined]
             "answer": None,  # Explicitly set answer to None
             "fcs": "N/A",  # Set fcs to "N/A" to match expected behavior
             "context": [
@@ -451,7 +470,7 @@ class TestVectaraTools(unittest.TestCase):
                 )
             ],
         }
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -477,8 +496,8 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         mock_rag = MagicMock()
-        mock_rag.invoke.return_value = None
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_rag.invoke.return_value = None  # type: ignore[attr-defined]
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -500,7 +519,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore = MockVectara()
         mock_vectara.return_value = mock_vectorstore
 
-        mock_vectorstore.add_texts = MagicMock(return_value=["doc1", "doc2"])
+        mock_vectorstore.add_texts = MagicMock(return_value=["doc1", "doc2"])  # type: ignore[method-assign]
 
         tool = VectaraIngest(
             name="test_ingest",
@@ -535,7 +554,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore = MockVectara()
         mock_vectara.return_value = mock_vectorstore
 
-        mock_vectorstore.add_texts = MagicMock(return_value=["custom1", "custom2"])
+        mock_vectorstore.add_texts = MagicMock(return_value=["custom1", "custom2"])  # type: ignore[method-assign]
 
         tool = VectaraIngest(
             name="test_ingest",
@@ -577,7 +596,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore = MockVectara()
         mock_vectara.return_value = mock_vectorstore
 
-        mock_vectorstore.add_texts = MagicMock(return_value=["doc1", "doc2"])
+        mock_vectorstore.add_texts = MagicMock(return_value=["doc1", "doc2"])  # type: ignore[method-assign]
 
         tool = VectaraIngest(
             name="test_ingest",
@@ -604,7 +623,9 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         # Create a custom check for corpus_key
-        def mock_similarity_search_with_score(query, **kwargs):
+        def mock_similarity_search_with_score(
+            query: str, **kwargs: Any
+        ) -> List[Tuple[Any, float]]:
             if "config" in kwargs:
                 config = kwargs["config"]
                 if not config.search.corpora or not config.search.corpora[0].corpus_key:
@@ -616,7 +637,7 @@ class TestVectaraTools(unittest.TestCase):
                 )
             ]
 
-        mock_vectorstore.similarity_search_with_score = MagicMock(
+        mock_vectorstore.similarity_search_with_score = MagicMock(  # type: ignore[method-assign]
             side_effect=mock_similarity_search_with_score
         )
 
@@ -652,7 +673,7 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectara.return_value = mock_vectorstore
 
         # Create a custom as_rag method that checks for corpus_key
-        def mock_as_rag(config):
+        def mock_as_rag(config: Any) -> Any:
             if not config.search.corpora or not config.search.corpora[0].corpus_key:
                 raise ValueError("A corpus_key is required for generation")
 
@@ -663,7 +684,7 @@ class TestVectaraTools(unittest.TestCase):
             }
             return mock_rag
 
-        mock_vectorstore.as_rag = MagicMock(side_effect=mock_as_rag)
+        mock_vectorstore.as_rag = MagicMock(side_effect=mock_as_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -701,7 +722,7 @@ class TestVectaraTools(unittest.TestCase):
             "answer": "Summary text without context",
             "fcs": 0.80,
         }
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",
@@ -727,7 +748,7 @@ class TestVectaraTools(unittest.TestCase):
 
         mock_rag = MagicMock()
         mock_rag.invoke.return_value = {}
-        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)
+        mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
         tool = VectaraGeneration(
             name="test_generation",

@@ -1,12 +1,10 @@
 """Tools for interacting with Vectara."""
 
 import json
-from typing import Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from langchain_community.tools.vectorstore.tool import BaseVectorStoreTool
-from langchain_core.callbacks import (
-    CallbackManagerForToolRun,
-)
+from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
@@ -36,7 +34,9 @@ class VectaraIngestInput(BaseModel):
     )
     doc_type: Optional[str] = Field(
         default=None,
-        description="Optional document type ('core' or 'structured'). Defaults to 'structured'",
+        description=(
+            "Optional document type ('core' or 'structured'). Defaults to 'structured'"
+        ),
     )
 
 
@@ -48,7 +48,11 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
 
             from langchain_vectara.tools import VectaraSearch
             from langchain_vectara import Vectara  # Import from langchain-vectara
-            from langchain_vectara.vectorstores import VectaraQueryConfig, SearchConfig, CorpusConfig
+            from langchain_vectara.vectorstores import (
+                VectaraQueryConfig,
+                SearchConfig,
+                CorpusConfig,
+            )
 
             # Initialize the Vectara vectorstore
             vectara = Vectara(
@@ -90,8 +94,10 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
     name: str = "vectara_search"
     description: str = (
         "Search for information in your Vectara corpus using semantic search. "
-        "This tool understands the meaning of your query beyond simple keyword matching. "
-        "Useful for retrieving specific information from your documents based on meaning and context. "
+        "This tool understands the meaning of your query beyond simple keyword "
+        "matching. "
+        "Useful for retrieving specific information from your documents based on "
+        "meaning and context. "
     )
 
     # Default corpus_key if not provided in the config
@@ -109,8 +115,10 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
             A formatted description for the tool
         """
         template: str = (
-            "Useful for when you need to answer questions about {name} using semantic search. "
-            "This tool understands the meaning and context of your query, not just keywords. "
+            "Useful for when you need to answer questions about {name} using "
+            "semantic search. "
+            "This tool understands the meaning and context of your query, not just "
+            "keywords. "
             "Whenever you need information about {description} you should use this. "
         )
         return template.format(name=name, description=description)
@@ -126,7 +134,8 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
             if not self.corpus_key and not config:
                 return (
                     "Error: A corpus_key is required for search. "
-                    "You can provide it either directly to the tool or in the config object."
+                    "You can provide it either directly to the tool or in the "
+                    "config object."
                 )
 
             if not config:
@@ -171,7 +180,12 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
 
             from langchain_community.tools import VectaraGeneration
             from langchain_vectara import Vectara  # Import from langchain-vectara
-            from langchain_vectara import VectaraQueryConfig, SearchConfig, CorpusConfig, GenerationConfig
+            from langchain_vectara import (
+                VectaraQueryConfig,
+                SearchConfig,
+                CorpusConfig,
+                GenerationConfig,
+            )
 
             # Initialize the Vectara vectorstore
             vectara = Vectara(
@@ -219,7 +233,9 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
     name: str = "vectara_generation"
     description: str = (
         "Generate AI responses from your Vectara corpus using semantic search. "
-        "This tool understands the meaning of your query and generates a concise summary from the most relevant results. "
+        "This tool understands the meaning of your query and generates a concise "
+        "summary "
+        "from the most relevant results. "
     )
 
     # Default corpus_key if not provided in the config
@@ -238,8 +254,10 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
         """
         template: str = (
             "Useful for when you need AI-generated answers about {name}. "
-            "This tool understands the meaning of your query and generates a concise response from relevant documents. "
-            "Whenever you need a comprehensive overview about {description} you should use this. "
+            "This tool understands the meaning of your query and generates a concise "
+            "response from relevant documents. "
+            "Whenever you need a comprehensive overview about {description} you should "
+            "use this. "
         )
         return template.format(name=name, description=description)
 
@@ -254,7 +272,8 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
             if not config and not self.corpus_key:
                 return (
                     "Error: A corpus_key is required for generation. "
-                    "You can provide it either directly to the tool or in the config object."
+                    "You can provide it either directly to the tool or in the "
+                    "config object."
                 )
 
             if not config:
@@ -275,7 +294,7 @@ class VectaraGeneration(BaseVectorStoreTool, BaseTool):
                     search=search_config, generation=generation_config
                 )
 
-            rag = self.vectorstore.as_rag(config)
+            rag = self.vectorstore.as_rag(config)  # type: ignore[attr-defined]
             result = rag.invoke(query)
 
             if not result:
@@ -328,7 +347,8 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
     name: str = "vectara_ingest"
     description: str = (
         "Ingest documents into your Vectara corpus for semantic search. "
-        "Useful for adding new information to your knowledge base that can be queried using natural language. "
+        "Useful for adding new information to your knowledge base that can be queried "
+        "using natural language. "
         "Documents will be processed to understand their meaning and context. "
         "Input should be a list of texts to ingest."
     )
@@ -352,9 +372,12 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
             A formatted description for the tool
         """
         template: str = (
-            "Useful for when you need to add new information to {name} for semantic search. "
-            "Documents added will be processed for meaning and context to enable natural language querying. "
-            "Whenever you need to ingest new documents about {description} you should use this. "
+            "Useful for when you need to add new information to {name} for "
+            "semantic search. "
+            "Documents added will be processed for meaning and context to enable "
+            "natural language querying. "
+            "Whenever you need to ingest new documents about {description} "
+            "you should use this. "
             "Input should be a list of text documents to ingest."
         )
         return template.format(name=name, description=description)
@@ -389,18 +412,22 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
             if not active_corpus_key:
                 return "Error: corpus_key is required for ingestion"
 
-            kwargs = {"corpus_key": active_corpus_key}
+            # Create a dictionary of kwargs for add_texts
+            add_texts_kwargs: Dict[str, Any] = {"corpus_key": active_corpus_key}
 
             if doc_metadata is not None:
-                kwargs["doc_metadata"] = doc_metadata
+                add_texts_kwargs["doc_metadata"] = doc_metadata
 
             if doc_type is not None:
-                kwargs["doc_type"] = doc_type
+                add_texts_kwargs["doc_type"] = doc_type
 
             doc_ids = self.vectorstore.add_texts(
-                texts=documents, metadatas=metadatas, ids=ids, **kwargs
+                texts=documents, metadatas=metadatas, ids=ids, **add_texts_kwargs
             )
 
-            return f"Successfully ingested {len(doc_ids)} documents into Vectara corpus {active_corpus_key} with IDs: {', '.join(doc_ids)}"
+            return (
+                f"Successfully ingested {len(doc_ids)} documents into Vectara "
+                f"corpus {active_corpus_key} with IDs: {', '.join(doc_ids)}"
+            )
         except Exception as e:
             return f"Error ingesting documents to Vectara: {str(e)}"
