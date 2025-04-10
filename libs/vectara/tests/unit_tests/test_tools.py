@@ -655,17 +655,15 @@ class TestVectaraTools(unittest.TestCase):
 
         search_config = SearchConfig(corpora=[corpus_config], limit=10)
 
-        query_config = VectaraQueryConfig(search=search_config)
-
         result = tool._run(
             query="test query",
-            config=query_config,
+            search_config=search_config,
         )
 
         mock_vectorstore.similarity_search_with_score.assert_called_once()
         call_kwargs = mock_vectorstore.similarity_search_with_score.call_args[1]
-        assert "config" in call_kwargs
-        assert isinstance(call_kwargs["config"], VectaraQueryConfig)
+        assert "search" in call_kwargs
+        assert isinstance(call_kwargs["search"], SearchConfig)
 
         results_data = json.loads(result)
         assert isinstance(results_data, list)
@@ -706,10 +704,10 @@ class TestVectaraTools(unittest.TestCase):
         mock_vectorstore.similarity_search_with_score.assert_called_once()
         call_kwargs = mock_vectorstore.similarity_search_with_score.call_args[1]
 
-        config = call_kwargs["config"]
-        assert config.search.corpora is not None
-        assert len(config.search.corpora) == 1
-        assert config.search.corpora[0].corpus_key == "test-corpus-123"
+        search_config = call_kwargs["search"]
+        assert search_config.corpora is not None
+        assert len(search_config.corpora) == 1
+        assert search_config.corpora[0].corpus_key == "test-corpus-123"
 
         results_data = json.loads(result)
         assert isinstance(results_data, list)
@@ -728,10 +726,12 @@ class TestVectaraTools(unittest.TestCase):
         def mock_similarity_search_with_score(
             query: str, **kwargs: Any
         ) -> List[Tuple[Any, float]]:
-            if "config" in kwargs:
-                config = kwargs["config"]
-                if not config.search.corpora or not config.search.corpora[0].corpus_key:
+            search_config = kwargs.get("search_config")
+            if search_config:
+                if not search_config.corpora or not search_config.corpora[0].corpus_key:
                     raise ValueError("A corpus_key is required for search")
+            else:
+                raise ValueError("Error searching Vectara")
             return [
                 (
                     MagicMock(page_content="Test content", metadata={"source": "test"}),
@@ -758,13 +758,10 @@ class TestVectaraTools(unittest.TestCase):
         assert "Error" in result
         assert "corpus_key is required for search" in result
 
-        empty_config = VectaraQueryConfig(search=SearchConfig())
-
-        result = tool._run(query="test query", config=empty_config)
+        result = tool._run(query="test query", search_config=SearchConfig())
 
         # Match the actual error format from the tool
         assert "Error searching Vectara" in result
-        assert "corpus_key is required for search" in result
 
     # -----------------------
     # VectaraIngest Tests

@@ -23,6 +23,7 @@ repository = "https://github.com/vectara/langchain-vectara"
 test = [
     "langchain-tests<1.0.0,>=0.3.7",
     "langchain-community<1.0.0,>=0.3.20",
+    "langchain-openai<0.4,>=0.3.6",
     "pytest<9,>=8",
     "freezegun<2.0.0,>=1.2.2",
     "pytest-mock<4.0.0,>=3.10.0",

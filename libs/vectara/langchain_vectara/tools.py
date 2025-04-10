@@ -69,7 +69,7 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
                 corpus_key="your-corpus-key"
             )
 
-            # Create a VectaraQueryConfig
+            # Create a SearchConfig
             corpus_config = CorpusConfig(
                 corpus_key="your-corpus-id",
                 metadata_filter="doc.type = 'article'",
@@ -81,15 +81,10 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
                 limit=10
             )
 
-            query_config = VectaraQueryConfig(
-                search=search_config,
-                generation=None
-            )
-
             # Use the tool with the config
             results = tool.run({
                 "query": "What is RAG?",
-                "config": query_config
+                "config": search_config
             })
     """
 
@@ -131,29 +126,27 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
     def _run(
         self,
         query: str,
-        config: Optional[VectaraQueryConfig] = None,
+        search_config: Optional[SearchConfig] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Run the Vectara search."""
         try:
-            if not self.corpus_key and not config:
+            if not self.corpus_key and not search_config:
                 return (
                     "Error: A corpus_key is required for search. "
                     "You can provide it either directly to the tool or in the "
                     "config object."
                 )
 
-            if not config:
+            if not search_config:
                 search_config = SearchConfig()
 
                 if self.corpus_key:
                     corpus_config = CorpusConfig(corpus_key=self.corpus_key)
                     search_config.corpora = [corpus_config]
 
-                config = VectaraQueryConfig(search=search_config)
-
             results = self.vectorstore.similarity_search_with_score(
-                query, config=config
+                query, search=search_config, generation=None
             )
 
             if not results:
@@ -310,7 +303,7 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
             return json.dumps(
                 {
                     "summary": result.get("answer"),
-                    "factual_consistency_score": result.get("fcs", "N/A"),
+                    "factual_consistency_score": result.get("fcs", None),
                 },
                 indent=2,
             )
@@ -509,7 +502,7 @@ class VectaraAddFiles(BaseVectorStoreTool, BaseTool):
 
     # Required corpus_key for file upload
     corpus_key: str = Field(
-        ...,  # This makes it required
+        ...,
         description="Corpus key where files will be uploaded",
     )
 
