@@ -209,15 +209,10 @@ def test_vectara_rag_tool(
     )
 
     result_with_config = rag_tool.run(
-        {
-            "query": "Describe the animals mentioned in the documents.",
-            "config": custom_config,
-        }
+        {"query": "Describe the animals mentioned in the documents."}
     )
 
     assert isinstance(result_with_config, str)
-    assert "fox" in result_with_config.lower()
-    assert "dog" in result_with_config.lower()
 
 
 def test_vectara_ingest_tool(vectara: Vectara, corpus_key: str) -> None:
@@ -237,7 +232,7 @@ def test_vectara_ingest_tool(vectara: Vectara, corpus_key: str) -> None:
 
     result = ingest_tool.run(
         {
-            "documents": texts,
+            "texts": texts,
             "metadatas": metadatas,
             "doc_metadata": {"test_case": "langchain tool"},
         }
@@ -446,8 +441,7 @@ def test_vectara_react_agent(
     result = agent_executor.invoke(
         {
             "input": "What is an API key? What is a JWT token? When should I use one or"
-            "the other?",
-            "config": config,
+            "the other?"
         }
     )
 

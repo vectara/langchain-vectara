@@ -717,7 +717,7 @@ class Vectara(VectorStore):
             raise ValueError("Missing required parameter: 'corpus_key'.")
 
         doc_metadata: dict = kwargs.get("doc_metadata", {})
-        doc_metadata["source"] = "langchain"
+        doc_metadata["source"] = self._source
 
         doc_type: Literal["core", "structured"] = kwargs.get("doc_type", "structured")
 

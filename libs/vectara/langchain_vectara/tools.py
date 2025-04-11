@@ -21,7 +21,7 @@ from langchain_vectara.vectorstores import (
 class VectaraIngestInput(BaseModel):
     """Input for the Vectara ingest tool."""
 
-    documents: List[str] = Field(description="List of texts to ingest into Vectara")
+    texts: List[str] = Field(description="List of texts to ingest into Vectara")
     metadatas: Optional[List[Dict]] = Field(
         default=None, description="Optional metadata for each document"
     )
@@ -35,7 +35,7 @@ class VectaraIngestInput(BaseModel):
         default=None, description="Optional metadata at the document level"
     )
     doc_type: Optional[str] = Field(
-        default=None,
+        default="structured",
         description=(
             "Optional document type ('core' or 'structured'). Defaults to 'structured'"
         ),
@@ -330,7 +330,7 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
         .. code-block:: python
 
             from langchain_community.tools import VectaraIngest
-            from langchain_vectara import Vectara  # Import from langchain-vectara
+            from langchain_vectara import Vectara
 
             # Initialize the Vectara vectorstore
             vectara = Vectara(
@@ -347,7 +347,7 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
 
             # Use the tool with additional parameters
             result = tool.run({
-                "documents": ["Document 1", "Document 2"],
+                "texts": ["Text 1", "Text 2"],
                 "metadatas": [{"source": "file1"}, {"source": "file2"}],
                 "ids": ["doc1", "doc2"],
                 "doc_metadata": {"batch": "batch1"},
@@ -398,7 +398,7 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
 
     def _run(
         self,
-        documents: List[str],
+        texts: List[str],
         metadatas: Optional[List[Dict]] = None,
         ids: Optional[List[str]] = None,
         corpus_key: Optional[str] = None,
@@ -409,7 +409,7 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
         """Run the Vectara ingest.
 
         Args:
-            documents: List of texts to ingest into Vectara
+            texts: List of texts to ingest into Vectara
             metadatas: Optional metadata for each document
             ids: Optional list of IDs for each document
             corpus_key: Optional corpus key override
@@ -436,7 +436,7 @@ class VectaraIngest(BaseVectorStoreTool, BaseTool):
                 add_texts_kwargs["doc_type"] = doc_type
 
             doc_ids = self.vectorstore.add_texts(
-                texts=documents, metadatas=metadatas, ids=ids, **add_texts_kwargs
+                texts=texts, metadatas=metadatas, ids=ids, **add_texts_kwargs
             )
 
             return (

@@ -225,13 +225,14 @@ class TestVectaraIngestToolUnit(ToolsUnitTests):
             "description": "Test ingest",
             "vectorstore": mock_vectorstore,
             "corpus_key": "test-corpus-123",
+            "doc_type": "structured",
         }
 
     @property
     def tool_invoke_params(self) -> Dict[str, Any]:
         """Return example parameters for invoking VectaraIngest."""
         return {
-            "documents": ["Document 1", "Document 2"],
+            "texts": ["Text 1", "Text 2"],
             "metadatas": [{"source": "test1"}, {"source": "test2"}],
         }
 
@@ -781,16 +782,16 @@ class TestVectaraTools(unittest.TestCase):
             corpus_key="test-corpus-123",
         )
 
-        documents = ["Document 1", "Document 2"]
+        texts = ["Text 1", "Text 2"]
         metadatas = [{"source": "test1"}, {"source": "test2"}]
 
         result = tool._run(
-            documents=documents,
+            texts=texts,
             metadatas=metadatas,
         )
 
         mock_vectorstore.add_texts.assert_called_once_with(
-            texts=documents,
+            texts=texts,
             metadatas=metadatas,
             ids=None,
             corpus_key="test-corpus-123",
@@ -816,14 +817,14 @@ class TestVectaraTools(unittest.TestCase):
             corpus_key="test-corpus-123",
         )
 
-        documents = ["Document 1", "Document 2"]
+        texts = ["Text 1", "Text 2"]
         metadatas = [{"source": "test1"}, {"source": "test2"}]
         ids = ["custom1", "custom2"]
         doc_metadata = {"batch": "test-batch", "department": "engineering"}
         doc_type = "structured"
 
         result = tool._run(
-            documents=documents,
+            texts=texts,
             metadatas=metadatas,
             ids=ids,
             doc_metadata=doc_metadata,
@@ -831,7 +832,7 @@ class TestVectaraTools(unittest.TestCase):
         )
 
         mock_vectorstore.add_texts.assert_called_once_with(
-            texts=documents,
+            texts=texts,
             metadatas=metadatas,
             ids=ids,
             corpus_key="test-corpus-123",
@@ -858,12 +859,12 @@ class TestVectaraTools(unittest.TestCase):
             corpus_key="default-corpus",
         )
 
-        documents = ["Document 1", "Document 2"]
+        texts = ["Text 1", "Text 2"]
 
-        result = tool._run(documents=documents, corpus_key="override-corpus")
+        result = tool._run(texts=texts, corpus_key="override-corpus")
 
         mock_vectorstore.add_texts.assert_called_once_with(
-            texts=documents, metadatas=None, ids=None, corpus_key="override-corpus"
+            texts=texts, metadatas=None, ids=None, corpus_key="override-corpus"
         )
 
         assert "Successfully ingested 2 documents" in result
