@@ -359,14 +359,6 @@ class TestVectaraTools(unittest.TestCase):
         }
         mock_vectorstore.as_rag = MagicMock(return_value=mock_rag)  # type: ignore[method-assign]
 
-        # Initialize the tool
-        tool = VectaraRAG(
-            name="test_rag",
-            description="Test RAG generation",
-            vectorstore=mock_vectorstore,
-            corpus_key="test-corpus-123",
-        )
-
         corpus_config = CorpusConfig(
             corpus_key="test-corpus-123",
             metadata_filter="doc.type = 'article'",
@@ -389,10 +381,15 @@ class TestVectaraTools(unittest.TestCase):
             search=search_config, generation=generation_config
         )
 
-        result = tool._run(
-            query="test query",
+        tool = VectaraRAG(
+            name="test_rag",
+            description="Test RAG generation",
+            vectorstore=mock_vectorstore,
+            corpus_key="test-corpus-123",
             config=query_config,
         )
+
+        result = tool._run(query="test query")
 
         mock_vectorstore.as_rag.assert_called_once_with(query_config)
         mock_rag.invoke.assert_called_once_with("test query")
@@ -541,7 +538,6 @@ class TestVectaraTools(unittest.TestCase):
             vectorstore=mock_vectorstore,
             corpus_key=None,
         )
-
         result = tool._run(
             query="test query",
         )
@@ -554,7 +550,15 @@ class TestVectaraTools(unittest.TestCase):
             search=SearchConfig(), generation=GenerationConfig()
         )
 
-        result = tool._run(query="test query", config=empty_config)
+        tool = VectaraRAG(
+            name="test_generation",
+            description="Test generation",
+            vectorstore=mock_vectorstore,
+            corpus_key=None,
+            config=empty_config,
+        )
+
+        result = tool._run(query="test query")
 
         # Match the actual error format from the tool
         assert "Error generating response from Vectara" in result
@@ -640,13 +644,6 @@ class TestVectaraTools(unittest.TestCase):
             ]
         )
 
-        tool = VectaraSearch(
-            name="test_search",
-            description="Test search",
-            vectorstore=mock_vectorstore,
-            corpus_key="test-corpus-123",
-        )
-
         corpus_config = CorpusConfig(
             corpus_key="test-corpus-123",
             metadata_filter="doc.type = 'article'",
@@ -655,9 +652,16 @@ class TestVectaraTools(unittest.TestCase):
 
         search_config = SearchConfig(corpora=[corpus_config], limit=10)
 
+        tool = VectaraSearch(
+            name="test_search",
+            description="Test search",
+            vectorstore=mock_vectorstore,
+            corpus_key="test-corpus-123",
+            search_config=search_config,
+        )
+
         result = tool._run(
             query="test query",
-            search_config=search_config,
         )
 
         mock_vectorstore.similarity_search_with_score.assert_called_once()
@@ -728,10 +732,9 @@ class TestVectaraTools(unittest.TestCase):
         ) -> List[Tuple[Any, float]]:
             search_config = kwargs.get("search_config")
             if search_config:
-                if not search_config.corpora or not search_config.corpora[0].corpus_key:
+                if not search_config.corpora[0].corpus_key:
                     raise ValueError("A corpus_key is required for search")
-            else:
-                raise ValueError("Error searching Vectara")
+
             return [
                 (
                     MagicMock(page_content="Test content", metadata={"source": "test"}),
@@ -757,11 +760,6 @@ class TestVectaraTools(unittest.TestCase):
         # Match the actual error format from the tool
         assert "Error" in result
         assert "corpus_key is required for search" in result
-
-        result = tool._run(query="test query", search_config=SearchConfig())
-
-        # Match the actual error format from the tool
-        assert "Error searching Vectara" in result
 
     # -----------------------
     # VectaraIngest Tests

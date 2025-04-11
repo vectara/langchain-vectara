@@ -49,7 +49,7 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
         .. code-block:: python
 
             from langchain_vectara.tools import VectaraSearch
-            from langchain_vectara import Vectara  # Import from langchain-vectara
+            from langchain_vectara import Vectara
             from langchain_vectara.vectorstores import (
                 VectaraQueryConfig,
                 SearchConfig,
@@ -59,14 +59,6 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
             # Initialize the Vectara vectorstore
             vectara = Vectara(
                 vectara_api_key="your-api-key"
-            )
-
-            # Create the tool
-            tool = VectaraSearch(
-                name="vectara_search",
-                description="Search for information in the Vectara corpus",
-                vectorstore=vectara,
-                corpus_key="your-corpus-key"
             )
 
             # Create a SearchConfig
@@ -81,11 +73,17 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
                 limit=10
             )
 
-            # Use the tool with the config
-            results = tool.run({
-                "query": "What is RAG?",
-                "config": search_config
-            })
+            # Create the tool with config
+            tool = VectaraSearch(
+                name="vectara_search",
+                description="Search for information in the Vectara corpus",
+                vectorstore=vectara,
+                corpus_key="your-corpus-key",
+                search_config=search_config  # Pass config at initialization
+            )
+
+            # Use the tool
+            results = tool.run("What is RAG?")
     """
 
     name: str = "vectara_search"
@@ -100,6 +98,8 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
 
     # Default corpus_key if not provided in the config
     corpus_key: Optional[str] = None
+
+    search_config: Optional[SearchConfig] = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -126,27 +126,34 @@ class VectaraSearch(BaseVectorStoreTool, BaseTool):
     def _run(
         self,
         query: str,
-        search_config: Optional[SearchConfig] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
-        """Run the Vectara search."""
+        """Run the Vectara search.
+
+        Args:
+            query: The query to search for
+            run_manager: Optional callback manager for the run
+
+        Returns:
+            JSON string containing search results
+        """
         try:
-            if not self.corpus_key and not search_config:
+            if not self.corpus_key and not self.search_config:
                 return (
                     "Error: A corpus_key is required for search. "
                     "You can provide it either directly to the tool or in the "
-                    "config object."
+                    "search_config object."
                 )
 
-            if not search_config:
-                search_config = SearchConfig()
+            if not self.search_config:
+                self.search_config = SearchConfig()
 
                 if self.corpus_key:
                     corpus_config = CorpusConfig(corpus_key=self.corpus_key)
-                    search_config.corpora = [corpus_config]
+                    self.search_config.corpora = [corpus_config]
 
             results = self.vectorstore.similarity_search_with_score(
-                query, search=search_config, generation=None
+                query, search=self.search_config, generation=None
             )
 
             if not results:
@@ -177,8 +184,8 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
         .. code-block:: python
 
             from langchain_community.tools import VectaraRAG
-            from langchain_vectara import Vectara  # Import from langchain-vectara
-            from langchain_vectara import (
+            from langchain_vectara import Vectara
+            from langchain_vectara.vectorstores import (
                 VectaraQueryConfig,
                 SearchConfig,
                 CorpusConfig,
@@ -190,17 +197,9 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
                 vectara_api_key="your-api-key"
             )
 
-            # Create the tool
-            tool = VectaraRAG(
-                name="vectara_rag",
-                description="Generate summaries from your Vectara corpus",
-                vectorstore=vectara,
-                corpus_key="your-corpus-id"  # Optional, can be provided in config
-            )
-
             # Create a VectaraQueryConfig with search and generation settings
             corpus_config = CorpusConfig(
-                corpus_key="your-corpus-id",
+                corpus_key="your-corpus-key",
                 metadata_filter="doc.type = 'article'",
                 lexical_interpolation=0.2
             )
@@ -221,6 +220,17 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
                 generation=generation_config
             )
 
+             # Create the tool
+            tool = VectaraRAG(
+                name="vectara_rag",
+                description="Generate summaries from your Vectara corpus",
+                vectorstore=vectara,
+                corpus_key="your-corpus-id", # optional, provide the corpus key if
+                                             # you have not provided the config
+                config=query_config,
+            )
+
+
             # Use the tool with the config
             results = tool.run({
                 "query": "What is RAG?",
@@ -238,6 +248,8 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
 
     # Default corpus_key if not provided in the config
     corpus_key: Optional[str] = None
+
+    config: Optional[VectaraQueryConfig] = None
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -264,19 +276,18 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
     def _run(
         self,
         query: str,
-        config: Optional[VectaraQueryConfig] = None,
         run_manager: Optional[CallbackManagerForToolRun] = None,
     ) -> str:
         """Run the Vectara generation."""
         try:
-            if not config and not self.corpus_key:
+            if not self.config and not self.corpus_key:
                 return (
                     "Error: A corpus_key is required for generation. "
                     "You can provide it either directly to the tool or in the "
                     "config object."
                 )
 
-            if not config:
+            if not self.config:
                 search_config = SearchConfig()
 
                 if self.corpus_key:
@@ -290,11 +301,11 @@ class VectaraRAG(BaseVectorStoreTool, BaseTool):
                     enable_factual_consistency_score=True,
                 )
 
-                config = VectaraQueryConfig(
+                self.config = VectaraQueryConfig(
                     search=search_config, generation=generation_config
                 )
 
-            rag = self.vectorstore.as_rag(config)  # type: ignore[attr-defined]
+            rag = self.vectorstore.as_rag(self.config)  # type: ignore[attr-defined]
             result = rag.invoke(query)
 
             if not result:

@@ -4,18 +4,14 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Type, Union
+from typing import Any, Dict, Generator, List, Type, Union
 
 import pytest
 import requests
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain_community.tools.tavily_search import TavilySearchResults
-from langchain_core.documents import Document
-from langchain_core.messages import ToolCall
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.pydantic_v1 import Field
-from langchain_core.tools import tool
+from langchain_core.runnables import RunnableSerializable
 from langchain_tests.integration_tests.tools import ToolsIntegrationTests
 
 from langchain_vectara import Vectara
@@ -91,9 +87,9 @@ def add_test_docs(vectara: Vectara, corpus_key: str) -> List[str]:
     """Add test documents for tool tests and return their IDs."""
 
     texts = [
-        f"The quick brown fox jumps over the lazy dog.",
-        f"The lazy dog sleeps while the quick brown fox jumps.",
-        f"A fox is quick and brown in color.",
+        "The quick brown fox jumps over the lazy dog.",
+        "The lazy dog sleeps while the quick brown fox jumps.",
+        "A fox is quick and brown in color.",
     ]
 
     metadatas = [
@@ -119,8 +115,9 @@ def temp_files(tmp_path: Path) -> Dict[str, str]:
     unique_id = str(uuid.uuid4())
 
     file_contents = {
-        "test.txt": f"This is a test file about a purple elephant. Test ID: {unique_id}",
-        "test.md": f"# Test Markdown\n\nThis document mentions a singing giraffe. Test ID: {unique_id}",
+        "test.txt": f"This is a test file about a purple elephant.Test ID: {unique_id}",
+        "test.md": f"# Test Markdown\n\nThis document mentions a singing giraffe."
+        f"Test ID: {unique_id}",
     }
 
     created_files = {}
@@ -144,13 +141,13 @@ def test_vectara_search_tool(
         corpus_key=corpus_key,
     )
 
-    result = search_tool.run(f"fox and dog")
+    result = search_tool.run("fox and dog")
     result_obj = eval(result)
     assert isinstance(result_obj, list)
     assert len(result_obj) > 0
 
     # Search with config
-    search_config = search = SearchConfig(
+    search_config = SearchConfig(
         corpora=[
             CorpusConfig(
                 corpus_key=corpus_key,
@@ -159,9 +156,15 @@ def test_vectara_search_tool(
         limit=1,
     )
 
-    result_with_config = search_tool.run(
-        {"query": "What animal is mentioned?", "search_config": search_config}
+    search_tool = VectaraSearch(
+        name="animal_search",
+        description="Search for information about animals",
+        vectorstore=vectara,
+        corpus_key=corpus_key,
+        search_config=search_config,
     )
+
+    result_with_config = search_tool.run({"query": "What animal is mentioned?"})
     result_obj_config = eval(result_with_config)
 
     assert isinstance(result_obj_config, list)
@@ -181,7 +184,7 @@ def test_vectara_rag_tool(
     )
 
     # Basic RAG query targeting our test documents specifically
-    result = rag_tool.run(f"What color is the fox mentioned?")
+    result = rag_tool.run("What color is the fox mentioned?")
 
     assert isinstance(result, str)
 
@@ -195,6 +198,14 @@ def test_vectara_rag_tool(
     custom_config = VectaraQueryConfig(
         search=SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)]),
         generation=generation_config,
+    )
+
+    rag_tool = VectaraRAG(
+        name="animal_knowledge",
+        description="Get information about animals",
+        vectorstore=vectara,
+        corpus_key=corpus_key,
+        config=custom_config,
     )
 
     result_with_config = rag_tool.run(
@@ -219,11 +230,8 @@ def test_vectara_ingest_tool(vectara: Vectara, corpus_key: str) -> None:
         corpus_key=corpus_key,
     )
 
-    # Create unique text to test retrieval later
-    unique_id = str(uuid.uuid4())
-
     # Test ingest functionality
-    texts = [f"Mars is a red planet.", f"Venus has a thick atmosphere."]
+    texts = ["Mars is a red planet.", "Venus has a thick atmosphere."]
 
     metadatas = [{"source": "planet Mars"}, {"source": "planet Venus"}]
 
@@ -243,11 +251,10 @@ def test_vectara_ingest_tool(vectara: Vectara, corpus_key: str) -> None:
         description="Verify ingested documents",
         vectorstore=vectara,
         corpus_key=corpus_key,
+        search_config=SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)]),
     )
 
-    search_config = SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)])
-
-    result = search_tool.run({"query": "What planet?", "search_config": search_config})
+    result = search_tool.run({"query": "What planet?"})
     result_obj = eval(result)
 
     assert len(result_obj) > 0
@@ -264,8 +271,6 @@ def test_vectara_add_files_tool(
         vectorstore=vectara,
         corpus_key=corpus_key,
     )
-
-    unique_id = str(uuid.uuid4())
 
     file_obj1 = File(
         file_path=temp_files["test.txt"], metadata={"source": "langchain tool"}
@@ -302,6 +307,7 @@ def test_vectara_tools_chain_integration(
         description="Search for information about animals",
         vectorstore=vectara,
         corpus_key=corpus_key,
+        search_config=SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)]),
     )
 
     # Create a real chain
@@ -316,12 +322,10 @@ def test_vectara_tools_chain_integration(
     """
     prompt = ChatPromptTemplate.from_template(template)
 
-    # Use a lambda to capture the unique ID for targeted searching
     def search(query: str) -> str:
-        search_config = SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)])
-        return search_tool.run({"query": f"{query}", "search_config": search_config})
+        return search_tool.run({"query": f"{query}"})
 
-    chain = (
+    chain: RunnableSerializable[Any, str] = (
         {"question": lambda x: x, "search_results": search}
         | prompt
         | llm
@@ -362,21 +366,23 @@ def test_vectara_react_agent(
         pytest.skip("langchain_openai not installed")
 
     api_auth_docs = [
-        "API keys are long strings that act as a simple but effective form of authentication for APIs. "
-        "They are passed with each request, usually in a header, and identify the calling project. "
-        "API keys are easy to use but can be insecure if leaked.",
-        "JWT (JSON Web Tokens) are a more secure form of authentication that contain encoded JSON data. "
-        "They can include user identity, expiration times, and other claims. "
-        "JWTs are signed to ensure they haven't been altered and are verified on the server. "
-        "They are ideal for session management and authorization.",
-        "When deciding between API keys and JWT tokens, consider your security needs. "
-        "Use API keys for simple internal services or when you need minimal setup. "
-        "Use JWT tokens for user authentication, when you need to store session data, "
-        "or when working with distributed systems that need secure token validation.",
+        """API keys are long strings that act as a simple but effective form of
+        authentication for APIs. They are passed with each request, usually in
+        a header, and identify the calling project. API keys are easy to use but
+        can be insecure if leaked.""",
+        """JWT (JSON Web Tokens) are a more secure form of authentication that contain
+        encoded JSON data. They can include user identity, expiration times, and
+        other claims. JWTs are signed to ensure they haven't been altered and are
+        verified on the server. They are ideal for session management and authorization.
+        """,
+        """When deciding between API keys and JWT tokens, consider your security needs.
+        Use API keys for simple internal services or when you need minimal setup.
+        Use JWT tokens for user authentication, when you need to store session data,
+        or when working with distributed systems that need secure token validation.""",
     ]
 
     # Add the documents to Vectara
-    doc_ids = vectara.add_texts(
+    vectara.add_texts(
         texts=api_auth_docs,
         corpus_key=corpus_key,
     )
@@ -397,7 +403,8 @@ def test_vectara_react_agent(
 
     vectara_rag_tool = VectaraRAG(
         name="api_auth_tool",
-        description="Get answers about API authentication methods, JWT tokens, and security best practices",
+        description="Get answers about API authentication methods, JWT tokens, "
+        "and security best practices",
         vectorstore=vectara,
         corpus_key=corpus_key,
         config=config,
@@ -438,7 +445,9 @@ def test_vectara_react_agent(
 
     result = agent_executor.invoke(
         {
-            "input": "What is an API key? What is a JWT token? When should I use one or the other?"
+            "input": "What is an API key? What is a JWT token? When should I use one or"
+            "the other?",
+            "config": config,
         }
     )
 
@@ -447,7 +456,7 @@ def test_vectara_react_agent(
 
 # Standard integration test implementation for VectaraSearch
 class TestVectaraSearchIntegration(ToolsIntegrationTests):
-    """Test VectaraSearch with standard integration test pattern using real API calls."""
+    """Test VectaraSearch with standard integration test pattern."""
 
     @property
     def tool_constructor(self) -> Type[VectaraSearch]:
@@ -463,11 +472,15 @@ class TestVectaraSearchIntegration(ToolsIntegrationTests):
 
         corpus_key = os.environ.get("VECTARA_CORPUS_KEY")
 
+        # Create a search config for the tool
+        search_config = SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)])
+
         return {
             "name": "standard_search",
             "description": "Standard search tool",
             "vectorstore": vectara_instance,
             "corpus_key": corpus_key,
+            "search_config": search_config,  # Pass config at initialization
         }
 
     @property
@@ -482,7 +495,7 @@ class TestVectaraSearchIntegration(ToolsIntegrationTests):
 
 # Standard integration test implementation for VectaraRAG
 class TestVectaraRAGIntegration(ToolsIntegrationTests):
-    """Test VectaraRAG with standard integration test pattern using real API calls."""
+    """Test VectaraRAG with standard integration test pattern."""
 
     @property
     def tool_constructor(self) -> Type[VectaraRAG]:
@@ -498,11 +511,21 @@ class TestVectaraRAGIntegration(ToolsIntegrationTests):
 
         corpus_key = os.environ.get("VECTARA_CORPUS_KEY")
 
+        # Create a query config for the tool
+        query_config = VectaraQueryConfig(
+            search=SearchConfig(corpora=[CorpusConfig(corpus_key=corpus_key)]),
+            generation=GenerationConfig(
+                max_used_search_results=5,
+                response_language="eng",
+            ),
+        )
+
         return {
             "name": "standard_rag",
             "description": "Standard RAG tool",
             "vectorstore": vectara_instance,
             "corpus_key": corpus_key,
+            "config": query_config,  # Pass config at initialization
         }
 
     @property
