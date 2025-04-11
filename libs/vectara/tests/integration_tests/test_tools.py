@@ -530,3 +530,85 @@ class TestVectaraRAGIntegration(ToolsIntegrationTests):
         For Vectara tools, this must include a "query" parameter.
         """
         return {"query": "What color is the fox?"}
+
+
+# Standard integration test implementation for VectaraIngest
+class TestVectaraIngestIntegration(ToolsIntegrationTests):
+    """Test VectaraIngest with standard integration test pattern."""
+
+    @property
+    def tool_constructor(self) -> Type[VectaraIngest]:
+        """Return the constructor for VectaraIngest."""
+        return VectaraIngest
+
+    @property
+    def tool_constructor_params(self) -> Dict:
+        """Return arguments needed to construct the tool."""
+
+        api_key = os.environ.get("VECTARA_API_KEY")
+        vectara_instance = Vectara(vectara_api_key=api_key)
+
+        corpus_key = os.environ.get("VECTARA_CORPUS_KEY")
+
+        return {
+            "name": "standard_ingest",
+            "description": "Standard ingest tool",
+            "vectorstore": vectara_instance,
+            "corpus_key": corpus_key,  # Required for ingestion
+        }
+
+    @property
+    def tool_invoke_params_example(self) -> Dict:
+        """
+        Returns a dictionary representing the "args" of an example tool call.
+
+        For VectaraIngest tool, this must include "texts" parameter.
+        """
+        return {
+            "texts": ["Sample document for ingest test"],
+            "metadatas": [{"source": "integration test"}],
+            "doc_metadata": {"test_type": "standard_integration"},
+        }
+
+
+# Standard integration test implementation for VectaraAddFiles
+class TestVectaraAddFilesIntegration(ToolsIntegrationTests):
+    """Test VectaraAddFiles with standard integration test pattern."""
+
+    @property
+    def tool_constructor(self) -> Type[VectaraAddFiles]:
+        """Return the constructor for VectaraAddFiles."""
+        return VectaraAddFiles
+
+    @property
+    def tool_constructor_params(self) -> Dict:
+        """Return arguments needed to construct the tool."""
+
+        api_key = os.environ.get("VECTARA_API_KEY")
+        vectara_instance = Vectara(vectara_api_key=api_key)
+
+        corpus_key = os.environ.get("VECTARA_CORPUS_KEY")
+
+        return {
+            "name": "standard_add_files",
+            "description": "Standard file upload tool",
+            "vectorstore": vectara_instance,
+            "corpus_key": corpus_key,  # Required for file upload
+        }
+
+    @property
+    def tool_invoke_params_example(self) -> Dict:
+        """
+        Returns a dictionary representing the "args" of an example tool call.
+
+        For VectaraAddFiles tool, this must include "files" parameter.
+        Note: For standard tests, we don't actually upload files but provide
+        a valid structure to pass schema validation.
+        """
+        # Create a temporary file path for the example
+        # This doesn't need to be a real file for the standard integration test
+        sample_file = File(
+            file_path="/tmp/example.txt", metadata={"source": "integration test"}
+        )
+
+        return {"files": [sample_file]}
