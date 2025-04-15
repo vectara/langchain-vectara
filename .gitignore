@@ -6,3 +6,4 @@ __pycache__
 libs/vectara/tests/integration_tests/.env
 .venv*
 .idea/
+.env
