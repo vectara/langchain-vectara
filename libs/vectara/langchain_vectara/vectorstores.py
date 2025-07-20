@@ -76,6 +76,7 @@ class GenerationConfig(BaseModel):
     max_used_search_results: int = 7
     response_language: str = "eng"
     generation_preset_name: str = "vectara-summary-ext-24-05-med-omni"
+    prompt_template: Optional[str] = None
     enable_factual_consistency_score: bool = True
     citations: Optional[Citation] = None
     model_parameters: Optional[Dict[str, Any]] = Field(default=None)
